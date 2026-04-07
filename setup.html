@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Page Metadata -->
+    <title>Test World</title>
+    <meta name="description" content="Foundry Virtual Tabletop - A Self-Hosted &amp; Modern Role-playing Platform">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" href="icons/vtt.png">
+
+    <!-- Included Stylesheets -->
+    <link href="css/foundry2.css" rel="stylesheet" type="text/css" media="all">
+
+    <style>
+        @import "fonts/fontawesome/css/all.min.css" layer(variables);
+    </style>
+
+    <!-- Included Scripts -->
+    <script src="scripts/jquery.min.js" defer></script>
+    <script src="scripts/handlebars.min.js" defer></script>
+    <script src="scripts/handlebars-intl.min.js" defer></script>
+    <script src="scripts/pixi.min.js" defer></script>
+    <script src="scripts/particle-emitter.min.js" defer></script>
+    <script src="scripts/pixi-graphics-smooth.js" defer></script>
+    <script src="scripts/basis.min.js" defer></script>
+    <script src="scripts/socket.io.min.js" defer></script>
+    <script src="scripts/tinymce.min.js" defer></script>
+    <script src="scripts/clipper/clipper.js" defer></script>
+    <script src="scripts/ktx2/basis_transcoder.js" defer></script>
+    <script src="scripts/ktx2/pixi-ktx2.min.js" defer></script>
+    <script src="scripts/earcut-edges/earcut-edges.js" defer></script>
+    <script src="scripts/showdown.js" defer></script>
+    <script src="scripts/spark-md5.min.js" defer></script>
+    <script src="scripts/vendor.mjs" type="module"></script>
+    <script src="scripts/foundry.mjs" type="module"></script>
+
+    <!-- Inline Scripts -->
+    <script>
+    const SIGNED_EULA=true;
+    const ROUTE_PREFIX="";
+    const MESSAGES=null;
+    </script>
+
+    <!-- Layer System & Module Styles -->
+    <style>
+    </style>
+
+    <!-- Inline Styles -->
+    <style>body.background {
+      --background-url: url("/systems/dnd5e/ui/official/dnd5e-background.webp");
+    }</style>
+</head>
+
+<body class="auth join flexcol background theme-dark join-theme-default">
+    <div id="main-background"></div>
+
+    <!-- Page Header -->
+    <header id="main-header" class="flexcol">
+        <h1>Test World</h1>
+    </header>
+
+    <!-- Body Content -->
+    <template id="join-game"></template>
+
+    <!-- Footer Watermark -->
+    <footer id="watermark" class="flexcol">
+        <p id="software-version">Version 13 Build 351</p>
+    </footer>
+
+    <!-- Global Tooltip Element -->
+    <aside id="tooltip" role="tooltip" popover="manual"></aside>
+</body>
+</html>

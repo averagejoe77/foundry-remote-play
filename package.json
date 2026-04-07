@@ -1,0 +1,49 @@
+{
+  "name": "foundry-remote-play",
+  "author": "Hunterjoe",
+  "description": "A simple dekstop app that allows you connect to a remote Foundry VTT server and play your character remotely without all of the foundry UI clutter.",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build && electron-builder",
+    "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.hunterjoe.foundry-remote-play",
+    "productName": "Foundry Remote Play",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "icon": "public/favicon.png"
+    },
+    "mac": {
+      "icon": "public/favicon.png"
+    },
+    "linux": {
+      "icon": "public/favicon.png"
+    }
+  },
+  "dependencies": {
+    "electron-store": "^11.0.2",
+    "socket.io-client": "^4.8.3",
+    "vue": "^3.4.21",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "autoprefixer": "^10.4.27",
+    "electron": "^30.0.1",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.2.2",
+    "vite": "^5.1.6",
+    "vite-plugin-electron": "^0.28.6",
+    "vite-plugin-electron-renderer": "^0.14.5",
+    "vue-tsc": "^2.0.26"
+  },
+  "main": "dist-electron/main.js"
+}
