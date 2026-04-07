@@ -1,18 +1,45 @@
-# Vue 3 + TypeScript + Vite
+# Foundry Remote Play
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Foundry Remote Play is a streamlined, Electron-based thin-client wrapper for Foundry Virtual Tabletop (Foundry VTT). This application is designed to let you connect to remote Foundry VTT servers and play your character directly, minimizing the clutter of the standard Foundry user interface for a focused player experience.
 
-## Recommended IDE Setup
+## Features
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+- **Campaign Launcher Dashboard**: A polished, native-feeling dashboard to manage and launch into your different campaigns.
+- **Custom Loading Overlay**: A sophisticated loading screen that seamlessly masks the Foundry VTT background login and initialization process. It only reveals the game board once your character sheet is fully rendered and ready for gameplay.
+- **Server Connection Management**: Easily add, edit, and remove server configurations and user credentials.
+- **One-Click Remote Connections**: Connect immediately to your saved campaigns without having to repeatedly log in.
+- **Distraction-Free Gaming**: Optimized for players to focus purely on their characters and the core game.
 
-## Type Support For `.vue` Imports in TS
+## Tech Stack
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
+This project is built using:
 
-If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has also implemented a [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471#discussioncomment-1361669) that is more performant. You can enable it by the following steps:
+- **Electron**: Cross-platform desktop application framework.
+- **Vue 3**: Frontend framework utilizing the Composition API and `<script setup>`.
+- **Vite**: Next-generation frontend tooling for blazing-fast local development and builds.
+- **Tailwind CSS**: Utility-first CSS framework for beautifully styled UI components.
+- **TypeScript**: Static type-checking for more robust code.
 
-1. Disable the built-in TypeScript Extension
-   1. Run `Extensions: Show Built-in Extensions` from VSCode's command palette
-   2. Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
-2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
+## Development Setup
+
+To get started with local development:
+
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+## Building for Production
+
+To build the desktop executable for your operating system, simply run:
+
+```bash
+npm run build
+```
+
+Once the process finishes, the compiled binaries and installers will be located in the `release/` directory.
