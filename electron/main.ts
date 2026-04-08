@@ -27,9 +27,8 @@ function createWindow() {
     icon: path.join(process.env.VITE_PUBLIC, 'favicon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
-      webviewTag: true,
-      // Ensure nodeIntegration is false for security (standard in this boilerplate)
-    },
+      webviewTag: true
+    }
   })
 
   // Test active push message to Renderer-process.
@@ -49,6 +48,19 @@ function createWindow() {
 // IPC Handlers for Local Database (electron-store)
 // ------------------------------------------------------------------
 app.whenReady().then(() => {
+  // Block heavy media assets from being downloaded by the webview to save bandwidth
+  app.on('web-contents-created', (_event, contents) => {
+    if (contents.getType() === 'webview') {
+      contents.session.webRequest.onBeforeRequest(
+        { urls: ['*://*/*.webm*', '*://*/*.mp4*', '*://*/*.m4v*', '*://*/*.mp3*', '*://*/*.ogg*', '*://*/*.wav*', '*://*/*.flac*', '*://*/*.m4a*'] },
+        (details, callback) => {
+          console.log(`[Media Blocker] Blocked heavy asset download: ${details.url}`);
+          callback({ cancel: true });
+        }
+      );
+    }
+  });
+
   // Save a value to the store
   ipcMain.handle('store-set', async (_event, key: string, val: any) => {
     store.set(key, val);

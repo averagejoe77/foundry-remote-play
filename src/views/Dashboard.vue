@@ -1,21 +1,26 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { FoundrySocket, ServerProfile } from '../api/foundry-socket';
+import { useRoute, useRouter } from 'vue-router';
+import { ProfileStore, ServerProfile } from '../api/profile-store';
 
+const route = useRoute();
 const router = useRouter();
 
 const profiles = ref<ServerProfile[]>([]);
 const editingId = ref<string | null>(null);
 const isLoading = ref(true);
+const errorMessage = ref<string | null>((route.query.error as string) || null);
 
 onMounted(async () => {
+  if (errorMessage.value) {
+    router.replace({ path: '/' }); 
+  }
   await loadProfiles();
   isLoading.value = false;
 });
 
 const loadProfiles = async () => {
-    profiles.value = await FoundrySocket.getProfiles();
+    profiles.value = await ProfileStore.getProfiles();
 };
 
 const createCampaign = async () => {
@@ -27,20 +32,20 @@ const createCampaign = async () => {
         username: "",
         password: ""
     };
-    await FoundrySocket.saveProfile(newProfile);
+    await ProfileStore.saveProfile(newProfile);
     profiles.value.push(newProfile);
     editingId.value = newId; // instantly enter edit mode
 };
 
 const deleteCampaign = async (id: string) => {
     if (confirm("Delete this campaign profile permanently?")) {
-        await FoundrySocket.deleteProfile(id);
+        await ProfileStore.deleteProfile(id);
         await loadProfiles(); // refresh the list
     }
 };
 
 const saveProfile = async (profile: ServerProfile) => {
-    await FoundrySocket.saveProfile(JSON.parse(JSON.stringify(profile)));
+    await ProfileStore.saveProfile(JSON.parse(JSON.stringify(profile)));
     editingId.value = null; // exit edit mode
     await loadProfiles();   // refresh exact data
 };
@@ -68,6 +73,17 @@ const connect = (id: string) => {
     <!-- Main Content Area -->
     <main class="flex-1 overflow-y-auto p-8 flex flex-col items-center min-h-0 relative">
       
+      <!-- Error Banner -->
+      <div v-if="errorMessage" class="w-full max-w-6xl mb-6 bg-rose-900/40 border border-rose-500 text-rose-200 px-6 py-4 rounded-lg flex items-center justify-between shadow-lg shadow-rose-900/20">
+         <div class="flex items-center gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <span class="font-medium">{{ errorMessage }}</span>
+         </div>
+         <button @click="errorMessage = null" class="text-rose-400 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+         </button>
+      </div>
+
       <div class="w-full max-w-6xl pb-10">
         <div class="flex justify-between items-end mb-8 relative z-10">
           <div>
