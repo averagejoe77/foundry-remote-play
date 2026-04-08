@@ -70,7 +70,7 @@ const onWebviewDomReady = () => {
         body.game #hotbar,
         body.game #controls,
         ol#notifications,
-        body.game #sidebar nav menu li:not(:first-child) {
+        body.game #sidebar nav menu li:not(:first-child):not(:nth-child(11)) {
             display: none !important;
             pointer-events: none !important;
             opacity: 0 !important;
