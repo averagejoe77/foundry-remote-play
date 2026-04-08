@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { FoundrySocket, ServerProfile } from '../api/foundry-socket';
+import { ProfileStore, ServerProfile } from '../api/profile-store';
 
 const route = useRoute();
 const router = useRouter();
@@ -22,15 +22,39 @@ const wittyMessages = [
     "Rolling for initiative..."
 ];
 const loadingText = ref(wittyMessages[Math.floor(Math.random() * wittyMessages.length)]);
+let messageInterval: ReturnType<typeof setInterval>;
+let connectionTimeout: ReturnType<typeof setTimeout>;
+let timeInterval: ReturnType<typeof setInterval>;
+const timePassed = ref(0);
 
 onMounted(async () => {
+  messageInterval = setInterval(() => {
+    let newText;
+    do {
+      newText = wittyMessages[Math.floor(Math.random() * wittyMessages.length)];
+    } while (newText === loadingText.value);
+    loadingText.value = newText;
+  }, 3000);
+
+  connectionTimeout = setTimeout(() => {
+    if (isLoadingSheet.value) {
+      console.log("App: Connection timed out after 60s");
+      router.push({ path: '/', query: { error: 'Connection timed out. Please verify the server is running and accessible.' } });
+      clearInterval(timeInterval);
+    }
+  }, 60000);
+
+  timeInterval = setInterval(() => {
+    timePassed.value++;
+  }, 1000);
+
   const profileId = route.query.profileId as string;
   if (!profileId) {
     router.push('/');
     return;
   }
   
-  const profiles = await FoundrySocket.getProfiles();
+  const profiles = await ProfileStore.getProfiles();
   profile.value = profiles.find(p => p.id === profileId) || null;
   
   if (!profile.value) {
@@ -39,7 +63,19 @@ onMounted(async () => {
   }
 });
 
+onUnmounted(() => {
+    if (messageInterval) clearInterval(messageInterval);
+    if (connectionTimeout) clearTimeout(connectionTimeout);
+    if (timeInterval) clearInterval(timeInterval);
+});
+
 const onWebviewConsole = (e: any) => {
+    if (e.message && e.message.includes("WRAPPER_AUTH_ERROR:")) {
+        const errorText = e.message.split("WRAPPER_AUTH_ERROR:")[1];
+        console.log("App: Auth failed, kicking to dashboard");
+        router.push({ path: '/', query: { error: 'Authentication Failed: ' + errorText } });
+        return;
+    }
     // Intercept our special completion message from the injected Foundry logic
     if (e.message && e.message.includes("WRAPPER_SHEET_READY")) {
         console.log("App: Character sheet rendered, hiding overlay!");
@@ -81,17 +117,8 @@ const onWebviewDomReady = () => {
             display: none !important;
         }
 
-        /* Force the character sheet rigidly to the window constraints */
-        body.game .app.window-app.sheet.actor {
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            border-radius: 0 !important;
-        }
         /* Hide the native close/minimize buttons so the user uses our Back button */
-        body.game .app.window-app.sheet.actor .window-header .close,
-        body.game .app.window-app.sheet.actor .window-header .minimize {
+        body.game .application.sheet.actor .window-header button[data-action="close"] {
             display: none !important;
         }
     `;
@@ -108,6 +135,23 @@ const onWebviewDomReady = () => {
         console.log("Current URL: ", window.location.href);
         console.log("Body classes: ", document.body.className);
         
+        // Monitor for Foundry UI error notifications (which indicate bad password or userid)
+        const observer = new MutationObserver((mutations) => {
+            for (const m of mutations) {
+                if (m.target && m.target.id === 'notifications') {
+                    const errorNodes = m.target.querySelectorAll('.notification.error');
+                    for (const node of errorNodes) {
+                        const text = node.textContent || '';
+                        // Ignore the false-positive generic VTT electron warning 
+                        if (!text.includes("older version of the Foundry Virtual Tabletop Electron client")) {
+                            console.log("WRAPPER_AUTH_ERROR:" + text);
+                        }
+                    }
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
         // Foundry dynamically renders the join page using Javascript after the DOM is ready.
         // We will poll for the element's existence every 250ms until it renders!
         let joinAttempts = 0;
@@ -137,6 +181,8 @@ const onWebviewDomReady = () => {
                         console.log("Auto-submitting join form...");
                         setTimeout(() => joinButton.click(), 150);
                     }
+                } else {
+                    console.log("WRAPPER_AUTH_ERROR:Username not found on server. Please verify your exact username.");
                 }
             }
             
@@ -151,6 +197,10 @@ const onWebviewDomReady = () => {
                 console.log("Wrapper Client: Foundry Ready.");
                 if (game.user && game.user.character) {
                     game.user.character.sheet.render(true);
+                    // force the character token to be selected on the canvas
+                    if (game.user.character.token) {
+                        game.user.character.token.control();
+                    }
                     
                     Hooks.on("renderActorSheet", (app, html, data) => {
                         if (app.object.id === game.user.character.id) {
@@ -166,14 +216,6 @@ const onWebviewDomReady = () => {
                     if (chatTab) {
                         chatTab.click();
                     }
-                    
-                    // Fallback in case it's already rendered somehow
-                    setTimeout(() => {
-                        console.log("WRAPPER_SHEET_READY");
-                    }, 5000);
-                } else {
-                    // Fallback if no character assigned
-                    console.log("WRAPPER_SHEET_READY");
                 }
             });
         }
@@ -182,10 +224,52 @@ const onWebviewDomReady = () => {
         if (typeof game !== 'undefined' && game.ready) {
             if (game.user && game.user.character) {
                 game.user.character.sheet.render(true);
+                // force the character token to be selected on the canvas
+                if (game.user.character.token) {
+                    game.user.character.token.control();
+                }
             }
         }
+
+        // Universal Failsafe: Poll the DOM to guarantee the wrapper resolves
+        let sheetReadyChecks = 0;
+        const sheetReadyInterval = setInterval(() => {
+            if (document.querySelector('body.game .application.sheet.actor')) {
+                console.log("WRAPPER_SHEET_READY");
+                clearInterval(sheetReadyInterval);
+            }
+            sheetReadyChecks++;
+            if (sheetReadyChecks > 60) { // 15 seconds of polling
+                // Even if no sheet rendered, if we are in the game world, drop the splash screen
+                if (document.body.classList.contains('game')) {
+                    console.log("WRAPPER_SHEET_READY");
+                }
+                clearInterval(sheetReadyInterval);
+            }
+        }, 250);
     `;
     webview.executeJavaScript(jsToInject);
+};
+
+const onWebviewNavigate = (e: any) => {
+    if (!profile.value) return;
+    try {
+        const urlObj = new URL(e.url);
+        // If we got kicked to setup, root, or auth (admin login) AFTER successfully loading the game
+        if (!isLoadingSheet.value && (urlObj.pathname === '/' || urlObj.pathname.startsWith('/setup') || urlObj.pathname.startsWith('/auth'))) {
+            console.log("App: Detected kick from server, redirecting to dashboard...");
+            router.push('/');
+        }
+    } catch (err) {
+        console.error("Failed to parse navigation URL", err);
+    }
+};
+
+const onWebviewFailLoad = (e: any) => {
+    if (e.errorCode !== 0) {
+        console.log("App: Webview failed to load URL", e.errorCode, e.errorDescription);
+        router.push({ path: '/', query: { error: `Connection failed: ${e.errorDescription}. Check your Server URL.` } });
+    }
 };
 
 const goBack = () => {
@@ -215,8 +299,9 @@ const refreshSheet = () => {
       </div>
       <div class="flex items-center gap-4">
         <span class="px-2.5 py-1 rounded bg-teal-500/20 border border-teal-500/30 text-teal-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.8)]"></span>
-            Native Client
+            <!-- show the connection status: connecting...{number of seconds}, connected -->
+            <span v-if="isLoadingSheet">Connecting... {{ timePassed }}s</span>
+            <span v-else>Connected</span>
         </span>
         <button @click="refreshSheet" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors active:scale-95" title="Reload Connected Server">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
@@ -233,7 +318,8 @@ const refreshSheet = () => {
         </div>
         
         <!-- Native Foundry Loading Overlay Hider -->
-        <div v-if="profile && isLoadingSheet" class="absolute inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center gap-8 backdrop-blur-xl">
+        <Transition name="fade">
+            <div v-if="profile && isLoadingSheet" class="absolute inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center gap-8 backdrop-blur-xl">
              <div class="relative w-32 h-32 flex items-center justify-center">
                 <!-- Outer Pulse -->
                 <div class="absolute inset-0 border-[4px] border-teal-500/20 rounded-full animate-ping" style="animation-duration: 2s;"></div>
@@ -244,11 +330,16 @@ const refreshSheet = () => {
                 <svg class="w-12 h-12 text-teal-300 drop-shadow-[0_0_10px_rgba(45,212,191,0.8)]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 2 22 22 22"></polygon><polygon points="12 2 7 14 17 14"></polygon></svg>
              </div>
              
-             <div class="flex flex-col items-center select-none">
-                 <h2 class="text-2xl font-bold text-white tracking-widest uppercase drop-shadow-md bg-gradient-to-r from-teal-200 to-emerald-400 bg-clip-text text-transparent">{{ loadingText }}</h2>
-                 <p class="text-slate-400 font-mono text-sm mt-3 px-4 py-1.5 rounded-full bg-slate-800/50 border border-slate-700">Connecting to session → <span class="text-teal-400">{{ profile.name }}</span></p>
+             <div class="flex flex-col items-center select-none w-full">
+                 <div class="h-10 flex items-center justify-center relative w-full mb-1">
+                     <Transition name="crossfade" mode="out-in">
+                         <h2 :key="loadingText" class="text-2xl font-bold text-white tracking-widest uppercase drop-shadow-md bg-gradient-to-r from-teal-200 to-emerald-400 bg-clip-text text-transparent text-center absolute w-full">{{ loadingText }}</h2>
+                     </Transition>
+                 </div>
+                 <p class="text-slate-400 font-mono text-sm px-4 py-1.5 rounded-full bg-slate-800/50 border border-slate-700">Connecting to session → <span class="text-teal-400">{{ profile.name }}</span></p>
              </div>
-        </div>
+            </div>
+        </Transition>
         
         <!-- The Magical Webview -->
         <webview 
@@ -259,6 +350,8 @@ const refreshSheet = () => {
             :partition="'persist:foundry-' + profile.id"
             @dom-ready="onWebviewDomReady"
             @console-message="onWebviewConsole"
+            @did-navigate="onWebviewNavigate"
+            @did-fail-load="onWebviewFailLoad"
             allowpopups
         ></webview>
     </div>
@@ -271,5 +364,20 @@ webview {
     flex: 1 1 auto;
     width: 100%;
     height: 100%;
+}
+.fade-leave-active {
+  transition: opacity 0.8s ease-in-out;
+}
+.fade-leave-to {
+  opacity: 0;
+}
+
+.crossfade-enter-active,
+.crossfade-leave-active {
+  transition: opacity 0.4s ease;
+}
+.crossfade-enter-from,
+.crossfade-leave-to {
+  opacity: 0;
 }
 </style>

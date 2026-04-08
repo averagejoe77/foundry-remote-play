@@ -3,7 +3,7 @@
   "author": "Hunterjoe",
   "description": "A simple dekstop app that allows you connect to a remote Foundry VTT server and play your character remotely without all of the foundry UI clutter.",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -28,7 +28,6 @@
   },
   "dependencies": {
     "electron-store": "^11.0.2",
-    "socket.io-client": "^4.8.3",
     "vue": "^3.4.21",
     "vue-router": "^4.6.4"
   },
